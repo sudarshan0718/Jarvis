@@ -16,6 +16,8 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_URL = "https://openrouter.ai/api/v1/chat/completions"
 recognizer = sr.Recognizer()
 
+
+
 # ================= SPEAK =================
 def speak(text):
     if not text:
@@ -40,29 +42,23 @@ def speak(text):
 def listen():
     with sr.Microphone() as source:
         print("🎙 Listening...")
-        recognizer.adjust_for_ambient_noise(source, duration=1)
 
-        try:
-            audio = recognizer.listen(
-                source,
-                timeout=5,
-                phrase_time_limit=10
-            )
-        except sr.WaitTimeoutError:
-            print("No speech detected...")
-            return ""
+        recognizer.energy_threshold = 300  # Sensitivity
+        recognizer.pause_threshold = 0.8  # Wait before stopping
+
+        audio = recognizer.listen(source)
 
     try:
         text = recognizer.recognize_google(audio, language="en-IN")
-        print("You:", text)
-        return text
+        print("You said:", text)
+        return text.lower()
 
     except sr.UnknownValueError:
-        print("Could not understand audio")
+        print("Could not understand")
         return ""
 
     except Exception as e:
-        print("Recognition Error:", e)
+        print("Error:", e)
         return ""
 
 
@@ -121,6 +117,36 @@ def handle_command(command):
     elif "date" in command or "day" in command:
         today = datetime.datetime.now().strftime("%A, %d %B %Y")
         speak(f"Today is {today}")
+    # 🔹 VOLUME CONTROL
+    elif "volume up" in command:
+        pyautogui.press("volumeup")
+        speak("Volume increased")
+
+    elif "volume down" in command:
+        pyautogui.press("volumedown")
+        speak("Volume decreased")
+
+    elif "mute" in command:
+        pyautogui.press("volumemute")
+        speak("Muted")
+
+    # 🔹 LOCK SYSTEM
+    elif "lock" in command:
+        speak("Locking system")
+        os.system("rundll32.exe user32.dll,LockWorkStation")
+
+    # 🔹 RESTART
+    elif "restart" in command:
+        speak("Restarting system")
+        os.system("shutdown /r /t 5")
+
+    # 🔹 SCREENSHOT
+    elif "screenshot" in command:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"screenshot_{timestamp}.png"
+        screenshot = pyautogui.screenshot()
+        screenshot.save(filename)
+        speak("Screenshot taken")
 
     # 🔹 CLOSE APPLICATION  👈 ADDED HERE
     elif "close" in command:
@@ -193,17 +219,11 @@ while True:
     if not command:
         continue
 
-    command = command.lower()
+    if "exit" in command or "stop" in command:
+        speak("Goodbye")
+        break
 
-    if WAKE_WORD in command:
-        command = command.replace(WAKE_WORD, "").strip()
+    handle_command(command)
 
-        if "exit" in command or "stop" in command:
-            speak("Goodbye")
-            break
 
-        if command:
-            handle_command(command)
-        else:
-            speak("Yes Sir")
 
